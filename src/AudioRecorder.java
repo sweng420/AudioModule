@@ -17,16 +17,27 @@
 //
 // Date Created: 27/02/19
 
+// TODO: user defined file path
+
 import java.io.*;
+import java.util.Arrays;
+
 import javax.sound.sampled.*;
+import javax.sound.sampled.AudioFileFormat.Type;
 
 public class AudioRecorder
 {
+	static TargetDataLine targetLine = null;
+	static final int maxRecordingTime = 3600000;
+	Thread recordThread;
+	
 	public static void main(String[] args)
 	{
 		try
 		{
-			initialiseAudioSettings();
+			// Initialise audio format settings and setup data line matching format specification
+			
+			targetLine = initialiseAudioSettings();
 		}
 		catch (LineUnavailableException e)
 		{
@@ -34,20 +45,28 @@ public class AudioRecorder
 		}
 	}
 	
-	private static void initialiseAudioSettings() throws LineUnavailableException
+	private static TargetDataLine initialiseAudioSettings() throws LineUnavailableException
 	{
 		// Define audio format as:
 		// Encoding: Linear PCM
 		// Sample Rate: 44.1 kHz
 		// Bit Depth: 16-bit
-		// Channel Format: Mono
+		// Channel Format: Stereo
 		// Data Storage: Signed & Big-Endian
 		
-		final AudioFormat audioFormat = new AudioFormat(44100, 16, 1, true, true);
+		final AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, true);
 		
 		// Store format metadata in an Info variable 
 		
 		final DataLine.Info audioFormatInfo = new DataLine.Info(TargetDataLine.class, audioFormat);
+		
+		if (!AudioSystem.isLineSupported(Port.Info.MICROPHONE))
+		{
+			throw new LineUnavailableException("No microphone has been detected. Please reconnect the microphone and try again.");
+		} else
+		{
+			System.out.println("Microphone detected. Querying target data line...");
+		}
 				
 		// Use metadata to ascertain whether audio format is supported by default input device
 				
@@ -68,9 +87,14 @@ public class AudioRecorder
 		
 		targetLine.start();
 		
+		return targetLine;
+	}
+	
+	private void startRecording()
+	{
 		// Setup recording thread
 		
-		Thread recordThread = new Thread(new Runnable()
+		recordThread = new Thread(new Runnable()
 		{
 			@Override
 			public void run()
@@ -82,7 +106,7 @@ public class AudioRecorder
 					
 					// Instantiate output filepath & filename
 					
-					File outputFile = new File("C:\temp\test.wav");
+					File outputFile = new File("C:/temp/test.wav");
 					
 					// Write input audio to output .wav file
 					
@@ -102,22 +126,32 @@ public class AudioRecorder
 		
 		recordThread.start();
 		
-		// 
-		// TEST
-		//
-		
-		// Record for 5 seconds
-		// In practice we will have a startRecording / stopRecording functionality
+		// Record for max recording time of 60 minutes
 		
 		try
 		{
-			recordThread.sleep(5000);
+			recordThread.sleep(maxRecordingTime);
 		}
 		catch (InterruptedException e)
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	private void pauseRecording()
+	{
+		targetLine.stop();
+	}
+	
+	private void resumeRecording()
+	{
+		// TODO: in practice may be able to merge this with pauseRecording() but leave for now
 		
+		targetLine.start();
+	}
+	
+	private void stopRecording()
+	{
 		// Cease all I/O functions of the line
 		
 		targetLine.stop();
@@ -131,26 +165,5 @@ public class AudioRecorder
 		//
 		
 		recordThread.stop();
-			
-	}
-	
-	private void startRecording()
-	{
-		
-	}
-	
-	private void pauseRecording()
-	{
-		
-	}
-	
-	private void stopRecording()
-	{
-		
-	}
-	
-	private void saveRecording()
-	{
-		
 	}
 }
