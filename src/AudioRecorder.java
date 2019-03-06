@@ -20,7 +20,8 @@
 // TODO: user defined file path
 
 import java.io.*;
-import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.sound.sampled.*;
 import javax.sound.sampled.AudioFileFormat.Type;
@@ -28,8 +29,8 @@ import javax.sound.sampled.AudioFileFormat.Type;
 public class AudioRecorder
 {
 	static TargetDataLine targetLine = null;
-	static final int maxRecordingTime = 3600000;
-	Thread recordThread;
+	static final long maxRecordingTime = 3600000; // One hour in milliseconds
+	static Thread recordThread;
 	
 	public static void main(String[] args)
 	{
@@ -37,15 +38,66 @@ public class AudioRecorder
 		{
 			// Initialise audio format settings and setup data line matching format specification
 			
-			targetLine = initialiseAudioSettings();
+			initialiseAudioSettings();
 		}
 		catch (LineUnavailableException e)
 		{
 			e.printStackTrace();
 		}
+		
+		// TEST
+		
+		startRecording();
+		
+		try
+		{
+			System.out.println("Sleeping for 5s...");
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		
+		System.out.println("About to pause recording...");
+		
+		pauseRecording();
+		targetLine.stop();
+		
+		try
+		{
+			System.out.println("Sleeping for 5s...");
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		
+		System.out.println("About to resume recording...");
+		
+		resumeRecording();
+		
+		try
+		{
+			System.out.println("Sleeping for 5s...");
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		
+		System.out.println("About to stop recording...");
+		
+		stopRecording();
+		
+		System.out.println("Recording stopped...(in theory)");
+		
+		// /TEST
 	}
 	
-	private static TargetDataLine initialiseAudioSettings() throws LineUnavailableException
+	private static void initialiseAudioSettings() throws LineUnavailableException
 	{
 		// Define audio format as:
 		// Encoding: Linear PCM
@@ -77,7 +129,7 @@ public class AudioRecorder
 		
 		// Get a line matching the specified audio format 
 		
-		TargetDataLine targetLine = (TargetDataLine)AudioSystem.getLine(audioFormatInfo);
+		targetLine = (TargetDataLine)AudioSystem.getLine(audioFormatInfo);
 		
 		// Instruct the system to allocate resources to the targetLine and switch it on
 		
@@ -86,12 +138,22 @@ public class AudioRecorder
 		// Prepare line for audio input
 		
 		targetLine.start();
-		
-		return targetLine;
 	}
 	
-	private void startRecording()
+	private static void startRecording()
 	{
+		TimerTask scheduleRecordingEnd = new TimerTask()
+				{
+					public void run()
+					{
+						stopRecording();
+					}
+				};
+				
+		Timer recordingTimer = new Timer("Recording Timer");
+		
+		recordingTimer.schedule(scheduleRecordingEnd, maxRecordingTime);
+		
 		// Setup recording thread
 		
 		recordThread = new Thread(new Runnable()
@@ -125,32 +187,26 @@ public class AudioRecorder
 		// Start recording
 		
 		recordThread.start();
-		
-		// Record for max recording time of 60 minutes
-		
-		try
-		{
-			recordThread.sleep(maxRecordingTime);
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
 	}
 	
-	private void pauseRecording()
+	private static void pauseRecording()
 	{
 		targetLine.stop();
 	}
 	
-	private void resumeRecording()
+	private static void resumeRecording()
 	{
 		// TODO: in practice may be able to merge this with pauseRecording() but leave for now
 		
 		targetLine.start();
+		
+		if (targetLine.isRunning())
+		{
+			System.out.println("Running!");
+		}
 	}
 	
-	private void stopRecording()
+	private static void stopRecording()
 	{
 		// Cease all I/O functions of the line
 		
@@ -160,9 +216,7 @@ public class AudioRecorder
 		
 		targetLine.close();
 		
-		//
-		// /TEST
-		//
+		System.out.println("Stopping recording...");
 		
 		recordThread.stop();
 	}
