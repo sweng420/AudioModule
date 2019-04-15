@@ -4,20 +4,29 @@
 // of the code contained herein under the Copyright, Designs and Patents Act 1988.
 //
 // Removal, modification or obfuscation of this trademark shall be considered a 
-// breach of the terms of the license and may result in legal action
+// breach of the terms of the license and may result in legal action.
 //
 // Module Name: AudioRecorder
 //
 // Description: 
 //
 // A module for the recording of a .wav (WAVE) file of maximum length 60 minutes
-// at CD standard sampling rate (44.1 kHz) using the Windows default input device
+// at CD standard sampling rate (44.1 kHz) using the Windows default input device.
 
-// Authors: Louis Cowell
+// Authors: Louis Cowell, Sam Merryweather
 //
 // Date Created: 27/02/19
 
 // TODO: user defined file path
+// TODO: implement gain control: https://docs.oracle.com/javase/tutorial/sound/controls.html 
+// TODO: Generate 'session ID' to implement pausing across given time period?
+// TODO: implement pause function using concatenation: https://stackoverflow.com/questions/653861/join-two-wav-files-from-java 
+
+// USEFUL LINKS
+
+// TODO: https://github.com/frohoff/jdk8u-dev-jdk/blob/master/src/share/classes/com/sun/media/sound/WaveFileWriter.java
+// TODO: https://stackoverflow.com/questions/3297749/java-reading-manipulating-and-writing-wav-files
+// TODO: https://docs.oracle.com/javase/tutorial/sound/converters.html
 
 import java.io.*;
 import java.util.Timer;
@@ -31,6 +40,12 @@ public class AudioRecorder
 	static TargetDataLine targetLine = null;
 	static final long maxRecordingTime = 3600000; // One hour in milliseconds
 	static Thread recordThread;
+	static boolean pauseFlag = false;
+	
+	// String fileName = "e:/new/recording_" + sdf.format(new Date()) + ".wav";
+	static File outputFile = new File("C:/temp/test.wav");
+	static File outputFileTwo = new File("C:/temp/test2.wav");
+	static AudioInputStream audioInputStream;
 	
 	public static void main(String[] args)
 	{
@@ -51,50 +66,36 @@ public class AudioRecorder
 		
 		try
 		{
-			System.out.println("Sleeping for 5s...");
 			Thread.sleep(5000);
 		}
 		catch (InterruptedException e)
 		{
 			e.printStackTrace();
 		}
-		
-		System.out.println("About to pause recording...");
-		
-		pauseRecording();
-		targetLine.stop();
-		
-		try
-		{
-			System.out.println("Sleeping for 5s...");
-			Thread.sleep(5000);
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		
-		System.out.println("About to resume recording...");
-		
-		resumeRecording();
-		
-		try
-		{
-			System.out.println("Sleeping for 5s...");
-			Thread.sleep(5000);
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-		
-		System.out.println("About to stop recording...");
 		
 		stopRecording();
 		
-		System.out.println("Recording stopped...(in theory)");
+		try
+		{
+			Thread.sleep(500);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
 		
-		// /TEST
+		startRecording();
+		
+		try
+		{
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		
+		stopRecording();
 	}
 	
 	private static void initialiseAudioSettings() throws LineUnavailableException
@@ -131,83 +132,112 @@ public class AudioRecorder
 		
 		targetLine = (TargetDataLine)AudioSystem.getLine(audioFormatInfo);
 		
-		// Instruct the system to allocate resources to the targetLine and switch it on
 		
-		targetLine.open();
-		
-		// Prepare line for audio input
-		
-		targetLine.start();
 	}
 	
 	private static void startRecording()
 	{
+		// Instruct the system to allocate resources to the targetLine and switch it on
+		
+		try
+		{
+			targetLine.open();
+		} catch (LineUnavailableException e1)
+		{
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		// Instruct audio stream to listen to target line 
+		
+		audioInputStream = new AudioInputStream(targetLine);
+		
 		TimerTask scheduleRecordingEnd = new TimerTask()
+			{
+				public void run()
 				{
-					public void run()
-					{
-						stopRecording();
-					}
-				};
+					stopRecording();
+				}
+			};
 				
 		Timer recordingTimer = new Timer("Recording Timer");
 		
 		recordingTimer.schedule(scheduleRecordingEnd, maxRecordingTime);
 		
+		// Prepare line for audio input
+		
+		targetLine.start();
+		
 		// Setup recording thread
 		
 		recordThread = new Thread(new Runnable()
-		{
+		{	
 			@Override
 			public void run()
 			{
-		        {
-		        	// Route audio input stream to target data line
-					
-					AudioInputStream audioInputStream = new AudioInputStream(targetLine);
-					
-					// Instantiate output filepath & filename
-					
-					File outputFile = new File("C:/temp/test.wav");
-					
-					// Write input audio to output .wav file
-					
-					try
+				try
+				{
+					// If output file already exists, we must append it
+
+					if (outputFile.exists() && !outputFile.isDirectory())
 					{
+						//System.out.println("TEST: File existed!");
+
+						AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputFileTwo);
+
+						// FileOutputStream outputStream = new
+						// FileOutputStream(outputFile, true);
+
+						// System.out.println(audioInputStream.getFormat().toString());
+						// System.out.println(audioInputStream.getFrameLength());
+
+						// This is -1 because audioInputStream records 'live'
+						// data of unknown length
+						// This causes IOException 'stream length not
+						// specified'.
+
+						// Could write to a temp file then append existing file?
+						// Could write to AU then convert to WAVE?
+
+						// https://stackoverflow.com/questions/598344/java-audiosystem-and-targetdataline
+
+						// AudioSystem.write(audioInputStream,
+						// AudioFileFormat.Type.WAVE, outputStream);
+						
+					} else
+					{
+						//System.out.println("TEST: File did not yet exist!");
+
+						// If output file does not yet exist, write audio input stream to file
+
 						AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputFile);
 					}
-					catch (IOException e)
-					{
-						e.printStackTrace();
-					}
-		        }
+				} catch (IOException e)
+				{
+					e.printStackTrace();
+				}
 			}
 		});
 		
 		// Start recording
 		
 		recordThread.start();
-	}
-	
-	private static void pauseRecording()
-	{
-		targetLine.stop();
-	}
-	
-	private static void resumeRecording()
-	{
-		// TODO: in practice may be able to merge this with pauseRecording() but leave for now
 		
-		targetLine.start();
+		System.out.println("Recording started...");
 		
-		if (targetLine.isRunning())
-		{
-			System.out.println("Running!");
+		byte[] b = new byte[5000];
+		int howManyBytes = -2;
+		try {
+			howManyBytes = audioInputStream.read(b);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		System.out.println(howManyBytes);
 	}
 	
 	private static void stopRecording()
-	{
+	{	
 		// Cease all I/O functions of the line
 		
 		targetLine.stop();
@@ -216,8 +246,53 @@ public class AudioRecorder
 		
 		targetLine.close();
 		
+		// Close the input stream and deallocate system resources
+		
+		try
+		{
+			audioInputStream.close();
+		} catch (IOException e)
+		{
+			System.out.println("Could not close input stream");
+			e.printStackTrace();
+		}
+		
 		System.out.println("Stopping recording...");
 		
 		recordThread.stop();
+		
+		if (pauseFlag == true)
+		{
+			appendWavFiles(outputFile, outputFileTwo);
+		}
+		
+		System.out.println("Recording stopped...");
+		
+		pauseFlag = true;
+	}
+	
+	// Append two .wav files and store them in a separate file
+	
+	private static void appendWavFiles(File fileOne, File fileTwo)
+	{
+		try
+		{
+			File appendedFile = new File("C:/temp/appended.wav");
+			
+			AudioInputStream streamOne = AudioSystem.getAudioInputStream(fileOne);
+			AudioInputStream streamTwo = AudioSystem.getAudioInputStream(fileTwo);
+			
+			AudioInputStream appendedStreams = new AudioInputStream(
+													new SequenceInputStream(streamOne, streamTwo),
+													streamOne.getFormat(),
+													streamOne.getFrameLength() + streamTwo.getFrameLength());
+			
+			AudioSystem.write(appendedStreams, AudioFileFormat.Type.WAVE, appendedFile);
+			
+		} catch (Exception e)
+		{
+			System.out.println("An error occurred while appending files");
+			e.printStackTrace();
+		}
 	}
 }
