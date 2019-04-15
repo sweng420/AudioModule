@@ -131,8 +131,6 @@ public class AudioRecorder
 		// Get a line matching the specified audio format 
 		
 		targetLine = (TargetDataLine)AudioSystem.getLine(audioFormatInfo);
-		
-		
 	}
 	
 	private static void startRecording()
@@ -224,16 +222,6 @@ public class AudioRecorder
 		recordThread.start();
 		
 		System.out.println("Recording started...");
-		
-		byte[] b = new byte[5000];
-		int howManyBytes = -2;
-		try {
-			howManyBytes = audioInputStream.read(b);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println(howManyBytes);
 	}
 	
 	private static void stopRecording()
