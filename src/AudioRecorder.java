@@ -20,17 +20,14 @@
 // TODO: user defined file path
 // TODO: implement gain control: https://docs.oracle.com/javase/tutorial/sound/controls.html 
 // TODO: Generate 'session ID' to implement pausing across given time period?
-// TODO: implement pause function using concatenation: https://stackoverflow.com/questions/653861/join-two-wav-files-from-java 
-
-// USEFUL LINKS
-
-// TODO: https://github.com/frohoff/jdk8u-dev-jdk/blob/master/src/share/classes/com/sun/media/sound/WaveFileWriter.java
-// TODO: https://stackoverflow.com/questions/3297749/java-reading-manipulating-and-writing-wav-files
-// TODO: https://docs.oracle.com/javase/tutorial/sound/converters.html
 
 import java.io.*;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Arrays;
+import java.util.Date;
 
 import javax.sound.sampled.*;
 import javax.sound.sampled.AudioFileFormat.Type;
@@ -42,13 +39,27 @@ public class AudioRecorder
 	static Thread recordThread;
 	static boolean pauseFlag = false;
 	
-	// String fileName = "e:/new/recording_" + sdf.format(new Date()) + ".wav";
-	static File outputFile = new File("C:/temp/test.wav");
-	static File outputFileTwo = new File("C:/temp/test2.wav");
+	static String date = new SimpleDateFormat("yyyy-MM-dd").format(new Date()); // Today's date
+	static File dir = new File("C:/temp/"); // Root directory
+	static String fileNameWithSessionID; // Output filename 
+	static File outputFile = new File("C:/temp/" + date + ".wav"); 
+	static File tempFile = new File("C:/temp/temp.wav"); 
 	static AudioInputStream audioInputStream;
+	
+	static int sessionID = 1;
 	
 	public static void main(String[] args)
 	{
+		File[] matches = dir.listFiles(new FilenameFilter()
+		{
+		  public boolean accept(File dir, String name)
+		  {
+		     return name.startsWith(date) && name.endsWith(".wav");
+		  }
+		});
+		
+		System.out.println(Arrays.toString(matches));
+		
 		try
 		{
 			// Initialise audio format settings and setup data line matching format specification
@@ -96,6 +107,15 @@ public class AudioRecorder
 		}
 		
 		stopRecording();
+		
+		try 
+		{
+			Files.delete(outputFile.toPath());
+			Files.delete(tempFile.toPath());
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	private static void initialiseAudioSettings() throws LineUnavailableException
@@ -108,7 +128,7 @@ public class AudioRecorder
 		// Data Storage: Signed & Big-Endian
 		
 		final AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, true);
-		
+
 		// Store format metadata in an Info variable 
 		
 		final DataLine.Info audioFormatInfo = new DataLine.Info(TargetDataLine.class, audioFormat);
@@ -181,27 +201,7 @@ public class AudioRecorder
 					{
 						//System.out.println("TEST: File existed!");
 
-						AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputFileTwo);
-
-						// FileOutputStream outputStream = new
-						// FileOutputStream(outputFile, true);
-
-						// System.out.println(audioInputStream.getFormat().toString());
-						// System.out.println(audioInputStream.getFrameLength());
-
-						// This is -1 because audioInputStream records 'live'
-						// data of unknown length
-						// This causes IOException 'stream length not
-						// specified'.
-
-						// Could write to a temp file then append existing file?
-						// Could write to AU then convert to WAVE?
-
-						// https://stackoverflow.com/questions/598344/java-audiosystem-and-targetdataline
-
-						// AudioSystem.write(audioInputStream,
-						// AudioFileFormat.Type.WAVE, outputStream);
-						
+						AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, tempFile);
 					} else
 					{
 						//System.out.println("TEST: File did not yet exist!");
@@ -245,13 +245,11 @@ public class AudioRecorder
 			e.printStackTrace();
 		}
 		
-		System.out.println("Stopping recording...");
-		
 		recordThread.stop();
 		
 		if (pauseFlag == true)
 		{
-			appendWavFiles(outputFile, outputFileTwo);
+			appendWavFiles(outputFile, tempFile);
 		}
 		
 		System.out.println("Recording stopped...");
@@ -265,7 +263,8 @@ public class AudioRecorder
 	{
 		try
 		{
-			File appendedFile = new File("C:/temp/appended.wav");
+			fileNameWithSessionID = date.concat("_Session" + sessionID + ".wav");
+			File appendedFile = new File("C:/temp/" + fileNameWithSessionID);
 			
 			AudioInputStream streamOne = AudioSystem.getAudioInputStream(fileOne);
 			AudioInputStream streamTwo = AudioSystem.getAudioInputStream(fileTwo);
@@ -277,6 +276,11 @@ public class AudioRecorder
 			
 			AudioSystem.write(appendedStreams, AudioFileFormat.Type.WAVE, appendedFile);
 			
+			streamOne.close();
+			streamTwo.close();
+			appendedStreams.close();
+			
+			System.gc(); // lol
 		} catch (Exception e)
 		{
 			System.out.println("An error occurred while appending files");
