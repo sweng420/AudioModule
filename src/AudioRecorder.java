@@ -17,7 +17,6 @@
 //
 // Date Created: 27/02/19
 
-// TODO: user defined file path
 // TODO: implement gain control: https://docs.oracle.com/javase/tutorial/sound/controls.html 
 
 import java.io.*;
@@ -45,7 +44,7 @@ public class AudioRecorder
 	static String fileNameWithSessionID; 										// Output filename 
 	static File recordFile = new File("C:/temp/" + date + ".wav"); 				// First file to be recorded to
 	static File tempFile = new File("C:/temp/temp.wav"); 						// Second file to be appended to first file
-	static File copyFile;
+	static File copyFile;														// File to be copied into output file
 	static File appendedFile;													// Output file
 	static AudioInputStream audioInputStream; 									// Microphone input stream 
 	
@@ -57,17 +56,12 @@ public class AudioRecorder
 		
 		generateSessionID();
 		
+//		Alternatively...
+//		manuallyEditSessionID();
+		
 		// Create output file
 		
 		createNewOutputFile();
-				
-		// TEST
-		
-//		manuallyEditSessionID();
-//		
-//		System.out.println(sessionID);
-		
-		// /TEST
 		
 		try
 		{
@@ -75,15 +69,14 @@ public class AudioRecorder
 			
 			initialiseAudioSettings();
 		}
-		catch (LineUnavailableException e)
+		catch (Exception e)
 		{
-			System.out.println("");
-			e.printStackTrace();
+			// Do nothing, since error message is handled inside function 
 		}
 		
 		// TEST
 		
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 4; i++)
 		{
 			startRecording();
 			
@@ -107,14 +100,6 @@ public class AudioRecorder
 				e.printStackTrace();
 			}
 		}
-		
-//		try {
-//			Files.copy(copyFile.toPath(), appendedFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-//			Files.delete(copyFile.toPath());
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
 	}
 	
 	private static void initialiseAudioSettings() throws LineUnavailableException
@@ -238,11 +223,9 @@ public class AudioRecorder
 		{
 			if (appendedFile.exists())
 			{
-				System.out.println("Appending appendedFile and tempFile");
 				appendWavFiles(appendedFile, tempFile, false);
 			} else
 			{
-				System.out.println("Appending recordFile and tempFile");
 				appendWavFiles(recordFile, tempFile, true);
 			}
 		}
@@ -269,7 +252,6 @@ public class AudioRecorder
 			String fileNameWithSessionIDCopy = date.concat("_Session" + sessionID);
 			copyFile = new File("C:/temp/" + fileNameWithSessionIDCopy + "_Copy.wav");
 			
-			AudioSystem.write(appendedStreams, AudioFileFormat.Type.WAVE, appendedFile);
 			AudioSystem.write(appendedStreams, AudioFileFormat.Type.WAVE, copyFile);
 		
 			streamOne.close();
@@ -316,7 +298,7 @@ public class AudioRecorder
 			  // We can safely ignore these and only search for today's sessions
 			  // So we return all WAVE files stamped with todays date 
 					  
-;		     return name.startsWith(date) && name.endsWith(".wav");
+		     return name.startsWith(date) && name.endsWith(".wav");
 		  }
 		});
 		
