@@ -42,7 +42,7 @@ public class AudioRecorder
 	static String date = new SimpleDateFormat("yyyy-MM-dd").format(new Date()); // Today's date
 	static File dir = new File("C:/temp/"); 									// Root directory
 	static String fileNameWithSessionID; 										// Output filename 
-	static File recordFile = new File("C:/temp/" + date + ".wav"); 				// First file to be recorded to
+	static File recordFile;														// First file to be recorded to
 	static File tempFile = new File("C:/temp/temp.wav"); 						// Second file to be appended to first file
 	static File copyFile;														// File to be copied into output file
 	static File appendedFile;													// Output file
@@ -55,6 +55,10 @@ public class AudioRecorder
 		// Ensure that there is a unique session ID for this session 
 		
 		generateSessionID();
+		
+		// Setup 
+		
+		recordFile = new File("C:/temp/" + date + "_Session" + sessionID + ".wav"); 				
 		
 //		Alternatively...
 //		manuallyEditSessionID();
@@ -82,7 +86,7 @@ public class AudioRecorder
 			
 			try
 			{
-				Thread.sleep(5000);
+				Thread.sleep(4000);
 			}
 			catch (InterruptedException e)
 			{
@@ -223,9 +227,14 @@ public class AudioRecorder
 		{
 			if (appendedFile.exists())
 			{
+				System.out.println("Appending appendedFile & tempFile");
 				appendWavFiles(appendedFile, tempFile, false);
 			} else
 			{
+				// NOTE: Sam - can this 'else' clause be removed entirely?
+				// with the way the system works now it doesn't seem to actually do anything
+				
+				System.out.println("Appending recordFile & tempFile");
 				appendWavFiles(recordFile, tempFile, true);
 			}
 		}
@@ -298,7 +307,7 @@ public class AudioRecorder
 			  // We can safely ignore these and only search for today's sessions
 			  // So we return all WAVE files stamped with todays date 
 					  
-		     return name.startsWith(date) && name.endsWith(".wav");
+		     return name.startsWith(date + "_Session") && name.endsWith(".wav");
 		  }
 		});
 		
